@@ -1,0 +1,37 @@
+{
+	"name": "@atom-forge/env-reader",
+	"version": "0.1.0",
+	"description": "Type-safe environment variable reader for TypeScript",
+	"keywords": [
+		"env",
+		"environment",
+		"config",
+		"typescript"
+	],
+	"author": "Gergely Laborci",
+	"license": "SEE LICENSE IN LICENSE",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"repository": {
+		"url": "git://github.com/atom-forge/env-reader.git"
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc",
+		"prepublishOnly": "bun run build",
+		"release": "npm publish --access public"
+	},
+	"devDependencies": {
+		"@types/node": "^25.3.1",
+		"typescript": "^5.0.0"
+	}
+}
