@@ -31,7 +31,9 @@
 	"scripts": {
 		"build": "tsc",
 		"prepublishOnly": "bun run build",
-		"release": "npm publish --access public"
+		"release": "npm publish --access public",
+		"pub-check": "bun run scripts/pub-check.ts",
+		"pub": "bun run scripts/pub.ts"
 	},
 	"devDependencies": {
 		"@types/node": "^25.3.1",
