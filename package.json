@@ -26,7 +26,8 @@
 		"url": "git://github.com/atom-forge/env-reader.git"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"CHANGELOG.md"
 	],
 	"scripts": {
 		"build": "tsc",
