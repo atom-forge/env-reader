@@ -4,7 +4,9 @@ import * as path from "path";
 type OnMissing = boolean | ((path: string) => void);
 type UrlMapField = "protocol" | "username" | "password" | "hostname" | "host" | "port" | "path" | "hash";
 export type UrlMapSelector = UrlMapField | `path(${number})` | `path(${number},${number | "end"})` | `query(\"${string}\")` | `query('${string}')`;
-export type UrlMap = Record<string, UrlMapSelector>;
+export type UrlMapFallback = readonly [selector: UrlMapSelector, defaultValue: string];
+export type UrlMapValue = UrlMapSelector | UrlMapFallback;
+export type UrlMap = Record<string, UrlMapValue>;
 export type UrlMapResult<T extends UrlMap> = { [K in keyof T]: string };
 export interface UrlOptions<T extends UrlMap> {
 	defaultValue?: string;
@@ -15,6 +17,8 @@ export type DeepReadonly<T> = { readonly [K in keyof T]: T[K] extends object ? D
 function decodeUrlComponent(value: string): string {
 	return decodeURIComponent(value);
 }
+
+class UrlMapValueMissingError extends Error {}
 
 function urlPathSegments(url: URL): string[] {
 	return url.pathname.split("/").filter(Boolean).map(decodeUrlComponent);
@@ -33,7 +37,7 @@ function selectUrlPath(url: URL, selector: string): string {
 	const end = match[2] === undefined ? start : match[2] === "end" ? segments.length - 1 : resolvePathIndex(Number(match[2]), segments.length);
 
 	if (start < 0 || start >= segments.length || end < 0 || end >= segments.length || start > end)
-		throw Error(`URL path selector is out of bounds: ${selector}`);
+		throw new UrlMapValueMissingError(`URL path selector is out of bounds: ${selector}`);
 
 	const value = segments.slice(start, end + 1).join("/");
 	return match[2] !== undefined && end === segments.length - 1 && url.pathname.endsWith("/") ? `${value}/` : value;
@@ -46,7 +50,7 @@ function selectUrlMapValue(url: URL, selector: UrlMapSelector): string {
 	const queryMatch = /^query\((["'])(.*)\1\)$/.exec(selector);
 	if (queryMatch) {
 		const value = url.searchParams.get(queryMatch[2]);
-		if (value === null) throw Error(`URL query parameter is missing: ${queryMatch[2]}`);
+		if (value === null) throw new UrlMapValueMissingError(`URL query parameter is missing: ${queryMatch[2]}`);
 		return value;
 	}
 
@@ -59,6 +63,19 @@ function selectUrlMapValue(url: URL, selector: UrlMapSelector): string {
 		case "port": return url.port;
 		case "hash": return url.hash;
 		default: throw Error(`Invalid URL map selector: ${selector}`);
+	}
+}
+
+function isUrlMapFallback(value: UrlMapValue): value is UrlMapFallback {
+	return Array.isArray(value);
+}
+
+function resolveUrlMapValue(url: URL, value: UrlMapValue): string {
+	if (!isUrlMapFallback(value)) return selectUrlMapValue(url, value);
+	try { return selectUrlMapValue(url, value[0]); }
+	catch (error) {
+		if (error instanceof UrlMapValueMissingError) return value[1];
+		throw error;
 	}
 }
 
@@ -185,7 +202,7 @@ export class EnvReader {
 		if (!options) return url;
 
 		try {
-			return Object.fromEntries(Object.entries(options.map).map(([name, selector]) => [name, selectUrlMapValue(url, selector)])) as UrlMapResult<T>;
+			return Object.fromEntries(Object.entries(options.map).map(([name, value]) => [name, resolveUrlMapValue(url, value)])) as UrlMapResult<T>;
 		} catch (error) {
 			if (error instanceof Error) throw Error(`Env variable URL map failed: ${key} - ${error.message}`);
 			throw error;
