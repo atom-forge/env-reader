@@ -2,7 +2,65 @@ import * as fs from "fs";
 import * as path from "path";
 
 type OnMissing = boolean | ((path: string) => void);
+type UrlMapField = "protocol" | "username" | "password" | "hostname" | "host" | "port" | "path" | "hash";
+export type UrlMapSelector = UrlMapField | `path(${number})` | `path(${number},${number | "end"})` | `query(\"${string}\")` | `query('${string}')`;
+export type UrlMap = Record<string, UrlMapSelector>;
+export type UrlMapResult<T extends UrlMap> = { [K in keyof T]: string };
+export interface UrlOptions<T extends UrlMap> {
+	defaultValue?: string;
+	map: T;
+}
 export type DeepReadonly<T> = { readonly [K in keyof T]: T[K] extends object ? DeepReadonly<T[K]> : T[K] }
+
+function decodeUrlComponent(value: string): string {
+	return decodeURIComponent(value);
+}
+
+function urlPathSegments(url: URL): string[] {
+	return url.pathname.split("/").filter(Boolean).map(decodeUrlComponent);
+}
+
+function resolvePathIndex(index: number, length: number): number {
+	return index < 0 ? length + index : index;
+}
+
+function selectUrlPath(url: URL, selector: string): string {
+	const match = /^path\((-?\d+)(?:,(-?\d+|end))?\)$/.exec(selector);
+	if (!match) throw Error(`Invalid URL path selector: ${selector}`);
+
+	const segments = urlPathSegments(url);
+	const start = resolvePathIndex(Number(match[1]), segments.length);
+	const end = match[2] === undefined ? start : match[2] === "end" ? segments.length - 1 : resolvePathIndex(Number(match[2]), segments.length);
+
+	if (start < 0 || start >= segments.length || end < 0 || end >= segments.length || start > end)
+		throw Error(`URL path selector is out of bounds: ${selector}`);
+
+	const value = segments.slice(start, end + 1).join("/");
+	return match[2] !== undefined && end === segments.length - 1 && url.pathname.endsWith("/") ? `${value}/` : value;
+}
+
+function selectUrlMapValue(url: URL, selector: UrlMapSelector): string {
+	if (/^path\(/.test(selector)) return selectUrlPath(url, selector);
+	if (selector === "path") return url.pathname.slice(1).split("/").map(decodeUrlComponent).join("/");
+
+	const queryMatch = /^query\((["'])(.*)\1\)$/.exec(selector);
+	if (queryMatch) {
+		const value = url.searchParams.get(queryMatch[2]);
+		if (value === null) throw Error(`URL query parameter is missing: ${queryMatch[2]}`);
+		return value;
+	}
+
+	switch (selector) {
+		case "protocol": return url.protocol;
+		case "username": return decodeUrlComponent(url.username);
+		case "password": return decodeUrlComponent(url.password);
+		case "hostname": return url.hostname;
+		case "host": return url.host;
+		case "port": return url.port;
+		case "hash": return url.hash;
+		default: throw Error(`Invalid URL map selector: ${selector}`);
+	}
+}
 
 export function asReadonly<T>(value: T): DeepReadonly<T> {
 	return value as DeepReadonly<T>;
@@ -103,23 +161,35 @@ export class EnvReader {
 	}
 
 	/**
-	 * Get an env var as URL; uses default when provided.
+	 * Get an env var as URL, or map URL components to a typed object.
 	 * @param key Env var name.
-	 * @param defaultValue Fallback URL string when missing.
-	 * @returns URL instance.
+	 * @param defaultValueOrOptions Fallback URL string, or mapping options.
+	 * @returns URL instance, or the mapped URL components.
 	 * @throws Error When missing without default or not a valid URL.
 	 */
-	url(key: string, defaultValue?: string): URL {
+	url(key: string, defaultValue?: string): URL;
+	url<T extends UrlMap>(key: string, options: UrlOptions<T>): UrlMapResult<T>;
+	url<T extends UrlMap>(key: string, defaultValueOrOptions?: string | UrlOptions<T>): URL | UrlMapResult<T> {
+		const options = typeof defaultValueOrOptions === "string" || defaultValueOrOptions === undefined ? undefined : defaultValueOrOptions;
+		const defaultValue = typeof defaultValueOrOptions === "string" ? defaultValueOrOptions : options?.defaultValue;
 		let envValue = process.env[key];
+		let url: URL;
 		if (envValue === undefined) {
-			if (defaultValue !== undefined) {
-				try { return new URL(defaultValue); }
-				catch { throw Error(`Env variable default is not a valid url: ${key} - ${defaultValue}`); }
-			}
-			throw Error(`Missing Env variable (url): ${key}`);
+			if (defaultValue === undefined) throw Error(`Missing Env variable (url): ${key}`);
+			try { url = new URL(defaultValue); }
+			catch { throw Error(`Env variable default is not a valid url: ${key} - ${defaultValue}`); }
+		} else {
+			try { url = new URL(envValue.trim()); }
+			catch { throw Error(`Env variable type failed: ${key} (url)`); }
 		}
-		try { return new URL(envValue.trim()); }
-		catch { throw Error(`Env variable type failed: ${key} (url)`); }
+		if (!options) return url;
+
+		try {
+			return Object.fromEntries(Object.entries(options.map).map(([name, selector]) => [name, selectUrlMapValue(url, selector)])) as UrlMapResult<T>;
+		} catch (error) {
+			if (error instanceof Error) throw Error(`Env variable URL map failed: ${key} - ${error.message}`);
+			throw error;
+		}
 	}
 
 	/**

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.3] - 2026-08-28
+
+- Add mapped URL component extraction to `url()`.
+
+---
+
 ## [0.1.2] - 2026-08-27
 
 ---

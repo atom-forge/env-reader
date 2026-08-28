@@ -46,6 +46,7 @@ Instantiate with an absolute path to the project root. Used for resolving `file(
 | `float(key, default?)` | `number` | Parses a floating-point number. |
 | `boolean(key, default?)` | `boolean` | Parses `true/false`, `yes/no`, `1/0` (case-insensitive). |
 | `url(key, default?)` | `URL` | Validates and returns a `URL` object. |
+| `url(key, { defaultValue?, map })` | mapped object | Validates a URL and maps selected components to an object. |
 | `regex(key, default?)` | `RegExp` | Validates and returns a `RegExp` object. |
 | `oneOf(key, values, default?)` | `T` | Validates the value is one of the allowed strings. |
 | `list(key, parser, default?, separator?)` | `T[]` | Splits by separator (default `,`) and parses each item. |
@@ -53,6 +54,24 @@ Instantiate with an absolute path to the project root. Used for resolving `file(
 | `dir(key, default?, onMissing?, stayInProject?)` | `string` | Resolves an absolute directory path. |
 
 If a variable is missing and has no default, the method throws immediately.
+
+### `url` map example
+
+```typescript
+// S3_URL=s3://accessKey:secretKey@fsn1.your-objectstorage.com/assets/files/
+const s3 = env.url("S3_URL", {
+    map: {
+        accessKey: "username",
+        secretKey: "password",
+        host: "hostname",
+        bucket: "path(0)",
+        prefix: "path(1,end)",
+    },
+});
+// → { accessKey, secretKey, host, bucket: "assets", prefix: "files/" }
+```
+
+Available selectors are `protocol`, `username`, `password`, `hostname`, `host`, `port`, `path`, `hash`, `path(index)`, `path(start,end)`, and `query("name")`. Path indexes are zero-based; negative indexes count from the end. Ranges are inclusive and may use `end` as their final index.
 
 ### `asReadonly<T>(value: T): DeepReadonly<T>`
 
