@@ -71,7 +71,7 @@ const s3 = env.url("S3_URL", {
 // → { accessKey, secretKey, host, bucket: "assets", prefix: "files/" }
 ```
 
-Available selectors are `protocol`, `username`, `password`, `hostname`, `host`, `port`, `path`, `hash`, `path(index)`, `path(start,end)`, and `query("name")`. Path indexes are zero-based; negative indexes count from the end. Ranges are inclusive and may use `end` as their final index. A selector by itself is required; use `[selector, defaultValue]` to make it optional. The default applies only when the selector has no value, never to an invalid selector.
+Available selectors are `protocol`, `username`, `password`, `hostname`, `host`, `port`, `origin`, `path`, `hash`, `path(index)`, `path(start,end)`, and `query("name")`. `origin` combines the protocol and host, including a port when present. Path indexes are zero-based; negative indexes count from the end. Ranges are inclusive and may use `end` as their final index. A selector by itself is required; use `[selector, defaultValue]` to make it optional. The default applies only when the selector has no value, never to an invalid selector.
 
 ### `asReadonly<T>(value: T): DeepReadonly<T>`
 

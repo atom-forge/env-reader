@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 type OnMissing = boolean | ((path: string) => void);
-type UrlMapField = "protocol" | "username" | "password" | "hostname" | "host" | "port" | "path" | "hash";
+type UrlMapField = "protocol" | "username" | "password" | "hostname" | "host" | "port" | "origin" | "path" | "hash";
 export type UrlMapSelector = UrlMapField | `path(${number})` | `path(${number},${number | "end"})` | `query(\"${string}\")` | `query('${string}')`;
 export type UrlMapFallback = readonly [selector: UrlMapSelector, defaultValue: string];
 export type UrlMapValue = UrlMapSelector | UrlMapFallback;
@@ -56,6 +56,7 @@ function selectUrlMapValue(url: URL, selector: UrlMapSelector): string {
 
 	switch (selector) {
 		case "protocol": return url.protocol;
+		case "origin": return `${url.protocol}//${url.host}`;
 		case "username": return decodeUrlComponent(url.username);
 		case "password": return decodeUrlComponent(url.password);
 		case "hostname": return url.hostname;

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.5] - 2026-08-28
+
+- Add an `origin` URL map selector.
+
+---
+
 ## [0.1.4] - 2026-08-28
 
 - Add `[selector, defaultValue]` fallbacks for optional URL map values.
