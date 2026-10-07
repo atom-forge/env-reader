@@ -1,6 +1,6 @@
 {
 	"name": "@atom-forge/env-reader",
-	"version": "0.1.5",
+	"version": "0.1.6",
 	"description": "Type-safe environment variable reader for TypeScript",
 	"keywords": [
 		"env",
