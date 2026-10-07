@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `README-AI.md` as an entrypoint for AI agents, explaining when to use the package and linking to the detailed documentation.
+
+### Changed
+
+- Move the detailed usage guide and API reference to `docs/README.md`, keeping the root `README.md` as a concise introduction for human readers.
+
 ---
 
 ## [0.1.5] - 2026-08-28

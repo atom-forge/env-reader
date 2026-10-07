@@ -1,6 +1,13 @@
 # @atom-forge/env-reader
 
-Type-safe environment variable reader for TypeScript. Reads, parses, and validates environment variables at startup — so your app fails fast if the environment is misconfigured, not at runtime.
+Type-safe environment variable reader for TypeScript. Turn environment variables into a typed configuration object and catch missing or invalid settings at startup — not later at runtime.
+
+## Why use it?
+
+- Read strings, numbers, booleans, and allowed values without repeating parsing logic.
+- Define defaults for optional settings and require the ones your application needs.
+- Work with URLs, lists, regular expressions, and project-relative file or directory paths.
+- Give your configuration deeply readonly TypeScript types with `asReadonly`.
 
 ## Installation
 
@@ -8,89 +15,7 @@ Type-safe environment variable reader for TypeScript. Reads, parses, and validat
 npm install @atom-forge/env-reader
 ```
 
-## Usage
+## Learn more
 
-```typescript
-import { EnvReader, asReadonly } from "@atom-forge/env-reader";
-import path from "path";
-
-const env = new EnvReader(path.resolve(__dirname, "../"));
-
-const config = asReadonly({
-    app: {
-        env: env.oneOf("APP_ENV", ["dev", "prod", "test"], "prod"),
-    },
-    database: {
-        connectionString: env.string("DATABASE_URL"),
-        maxPool: env.int("DB_POOL_MAX", 20),
-    },
-    auth: {
-        secret: env.string("JWT_SECRET"),
-        expiresIn: env.int("JWT_EXPIRATION", 60 * 60 * 8),
-    },
-});
-```
-
-## API
-
-### `new EnvReader(projectRoot: string)`
-
-Instantiate with an absolute path to the project root. Used for resolving `file()` and `dir()` paths.
-
-### Methods
-
-| Method | Returns | Description |
-|---|---|---|
-| `string(key, default?, trim?)` | `string` | Reads a string. Trims whitespace by default. |
-| `int(key, default?, radix?)` | `number` | Parses an integer. Radix defaults to `10`. |
-| `float(key, default?)` | `number` | Parses a floating-point number. |
-| `boolean(key, default?)` | `boolean` | Parses `true/false`, `yes/no`, `1/0` (case-insensitive). |
-| `url(key, default?)` | `URL` | Validates and returns a `URL` object. |
-| `url(key, { defaultValue?, map })` | mapped object | Validates a URL and maps selected components to an object. |
-| `regex(key, default?)` | `RegExp` | Validates and returns a `RegExp` object. |
-| `oneOf(key, values, default?)` | `T` | Validates the value is one of the allowed strings. |
-| `list(key, parser, default?, separator?)` | `T[]` | Splits by separator (default `,`) and parses each item. |
-| `file(key, default?, onMissing?, stayInProject?)` | `string` | Resolves an absolute file path. |
-| `dir(key, default?, onMissing?, stayInProject?)` | `string` | Resolves an absolute directory path. |
-
-If a variable is missing and has no default, the method throws immediately.
-
-### `url` map example
-
-```typescript
-// S3_URL=s3://accessKey:secretKey@fsn1.your-objectstorage.com/assets/files/
-const s3 = env.url("S3_URL", {
-    map: {
-        accessKey: "username",
-        secretKey: "password",
-        host: "hostname",
-        bucket: "path(0)",
-        prefix: ["path(1,end)", ""],
-    },
-});
-// → { accessKey, secretKey, host, bucket: "assets", prefix: "files/" }
-```
-
-Available selectors are `protocol`, `username`, `password`, `hostname`, `host`, `port`, `origin`, `path`, `hash`, `path(index)`, `path(start,end)`, and `query("name")`. `origin` combines the protocol and host, including a port when present. Path indexes are zero-based; negative indexes count from the end. Ranges are inclusive and may use `end` as their final index. A selector by itself is required; use `[selector, defaultValue]` to make it optional. The default applies only when the selector has no value, never to an invalid selector.
-
-### `asReadonly<T>(value: T): DeepReadonly<T>`
-
-Wraps a config object in a `DeepReadonly` type. Zero runtime cost — pure TypeScript type cast.
-
-```typescript
-const config = asReadonly({ db: { host: "localhost" } });
-config.db.host = "other"; // TS error
-```
-
-### `list` example
-
-```typescript
-// ALLOWED_PORTS=80,443,3000
-const ports = env.list("ALLOWED_PORTS", v => parseInt(v, 10));
-// → [80, 443, 3000]
-```
-
-### `file` / `dir` parameters
-
-- `onMissing`: `true` (default) throws on missing path, `false` returns the path silently, or a `(path) => void` callback.
-- `stayInProject`: `true` (default) prevents path traversal outside the project root.
+- [Detailed guide and API reference](./docs/README.md): usage examples, methods, defaults, URL mapping, and path handling.
+- [AI agent entrypoint](./README-AI.md): package overview and guidance for AI-assisted integration.
