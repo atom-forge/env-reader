@@ -12,6 +12,7 @@ children:
   - "[[03-urls.md]]"
   - "[[04-paths.md]]"
   - "[[05-integration.md]]"
+  - "[AI Notes](ai-notes.md)"
 ---
 # @atom-forge/env-reader
 
