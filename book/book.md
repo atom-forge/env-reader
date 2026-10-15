@@ -1,5 +1,5 @@
 ---
-name: Env Reader
+title: Env Reader
 subtitle: "@atom-forge/env-reader"
 author: AtomForge
 id: atom-forge-env-reader
