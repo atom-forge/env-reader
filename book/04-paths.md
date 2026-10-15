@@ -1,49 +1,49 @@
 ---
-title: Fájlok és könyvtárak
+title: Files and Directories
 type: chapter
-teaches: [útvonalfeloldás, fájlrendszer-ellenőrzés]
+teaches: [path resolution, filesystem checks]
 ---
-# Fájlok és könyvtárak
+# Files and Directories
 
 ```typescript
 const certificate = env.file("TLS_CERT", "certs/server.pem");
 const uploads = env.dir("UPLOAD_DIR", "var/uploads");
 ```
 
-Mindkét metódus abszolút útvonalat ad vissza, és szinkron fájlrendszer-ellenőrzést végez.
+Both methods return an absolute path and perform a synchronous filesystem check.
 
 ```typescript
 file(key, defaultValue?, onMissing = true, stayInProject = true)
 dir(key, defaultValue?, onMissing = true, stayInProject = true)
 ```
 
-## Feloldási módok
+## Resolution modes
 
-- `stayInProject = true`: `path.resolve(projectRoot, value.trim())` szerint oldja fel az értéket, majd ellenőrzi az útvonalprefixet.
-- `stayInProject = false`: `path.resolve(value.trim())` szerint oldja fel; relatív értéknél a folyamat munkakönyvtára számít, nem a megadott projektgyökér.
+- `stayInProject = true`: resolves the value with `path.resolve(projectRoot, value.trim())`, then checks the path prefix.
+- `stayInProject = false`: resolves the value with `path.resolve(value.trim())`; for a relative value, the working directory of the process counts, not the given project root.
 
 ```mermaid
 flowchart TD
-    A[Változó vagy default] --> B[Trim és abszolút útvonal feloldása]
+    A[Variable or default] --> B[Trim and resolve to an absolute path]
     B --> C{stayInProject?}
-    C -->|Igen| D[Projektgyökér-prefix ellenőrzése]
-    C -->|Nem| E[Fájlrendszer ellenőrzése]
-    D -->|Megfelel| E
-    D -->|Nem felel meg| F[Hiba]
-    E --> G{Megfelelő fájl vagy könyvtár?}
-    G -->|Igen| H[Útvonal visszaadása]
-    G -->|Nem| I[onMissing alkalmazása]
+    C -->|Yes| D[Check the project root prefix]
+    C -->|No| E[Filesystem check]
+    D -->|Matches| E
+    D -->|Does not match| F[Error]
+    E --> G{Correct file or directory?}
+    G -->|Yes| H[Return the path]
+    G -->|No| I[Apply onMissing]
 ```
 
-## Hiányzó vagy rossz típusú útvonal
+## Missing or wrong-type paths
 
-| `onMissing` | Viselkedés |
+| `onMissing` | Behavior |
 |---|---|
-| `true` | Hibát dob; ez az alapértelmezés. |
-| `false` | Visszaadja az útvonalat, létrehozás nélkül. |
-| `(path) => void` | Meghívja a callbacket, majd visszaadja az útvonalat, ha a callback nem dobott. |
+| `true` | Throws an error; this is the default. |
+| `false` | Returns the path without creating anything. |
+| `(path) => void` | Calls the callback, then returns the path if the callback did not throw. |
 
-A callback hiányzó útvonalnál és rossz típusnál is futhat: például ha a `dir()` által vizsgált helyen fájl található. A callback után nincs újabb típusellenőrzés.
+The callback may run both for a missing path and for a wrong type: for example, when a file is found where `dir()` is looking. There is no further type check after the callback.
 
 ```typescript
 import * as fs from "node:fs";
@@ -53,10 +53,10 @@ const cache = env.dir("CACHE_DIR", "var/cache", directory => {
 });
 ```
 
-> [!note] Hiányzó változó továbbra is hiba
-> Az `onMissing = false` csak a fájlrendszerbeli ellenőrzés eredményét kezeli. Ha a környezeti változó és a default is hiányzik, a metódus hibát dob.
+> [!note] A missing variable is still an error
+> `onMissing = false` only handles the result of the filesystem check. If both the environment variable and the default are missing, the method throws.
 
-> [!danger] Nem biztonsági sandbox
-> A jelenlegi projektkorlát egyszerű `startsWith(projectRoot)` ellenőrzés, nem szegmenshatár- és nem realpath-alapú. Egy hasonló prefixű testvérkönyvtár vagy egy symlink kívülre mutathat. Ne használd nem megbízható bemenetek biztonsági elszigetelésére; ilyen esetben külön kanonikus útvonal- és határellenőrzés szükséges.
+> [!danger] Not a security sandbox
+> The current project boundary is a plain `startsWith(projectRoot)` check, based neither on segment boundaries nor on realpath. A sibling directory with a similar prefix, or a symlink, may point outside. Do not use it as security isolation for untrusted input; that needs a separate canonical path and boundary check.
 
-Tovább: [[05-integration|Integráció és hibakezelés]].
+Continue with [[05-integration|Integration and Error Handling]].

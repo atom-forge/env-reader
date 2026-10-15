@@ -1,19 +1,19 @@
 ---
-title: Integráció és hibakezelés
+title: Integration and Error Handling
 type: chapter
-requires: [értékek beolvasása]
-teaches: [readonly konfiguráció, hibakezelés]
+requires: [reading values]
+teaches: [readonly configuration, error handling]
 ---
-# Integráció és hibakezelés
+# Integration and Error Handling
 
-## Egyetlen konfigurációs modul
+## A single configuration module
 
-Az alkalmazás többi része egy előre összeállított konfigurációt használjon, ne ismételje meg a környezeti változók beolvasását.
+The rest of the application should use a pre-built configuration instead of repeating environment reads.
 
 ```tree
 src/
-  config.ts       # Környezeti értékek beolvasása és ellenőrzése
-  server.ts       # A konfiguráció felhasználása
+  config.ts       # Read and validate environment values
+  server.ts       # Use the configuration
 ```
 
 ```typescript
@@ -46,45 +46,45 @@ if (!config.auth.secret) {
 }
 ```
 
-> [!tip] A domain szabályait te határozod meg
-> A poolméret minimuma, a titok minimális hossza, a megengedett URL-protokoll és a mezők közötti összefüggések külön alkalmazásszintű ellenőrzést igényelnek. A könyvtár nem konfigurációs séma vagy üzleti validátor.
+> [!tip] You define the domain rules
+> The minimum pool size, the minimum secret length, the allowed URL protocol, and relationships between fields need separate application-level checks. The library is not a configuration schema or a business validator.
 
-## Mit jelent az asReadonly?
+## What does asReadonly mean?
 
 ```typescript
 const config = asReadonly({ db: { host: "localhost" } });
-// config.db.host = "other"; // TypeScript fordítási hiba
+// config.db.host = "other"; // TypeScript compile error
 ```
 
-Az `asReadonly<T>(value: T): DeepReadonly<T>` ugyanazt az objektumot adja vissza, típusassertionnel. Nem készít másolatot és nem hív `Object.freeze`-t.
+`asReadonly<T>(value: T): DeepReadonly<T>` returns the same object, using a type assertion. It makes no copy and does not call `Object.freeze`.
 
-> [!warning] Csak típusoldali védelem
-> JavaScriptből vagy más, módosítható referencián keresztül az objektum továbbra is módosítható. A readonly típus nem futásidejű immutabilitás vagy biztonsági határ.
+> [!warning] Type-level protection only
+> From JavaScript, or through another mutable reference, the object can still be modified. A readonly type is not runtime immutability or a security boundary.
 
-## Hibakezelés és naplózás
+## Error handling and logging
 
-A metódusok szinkron `Error` hibákat dobnak. Nincs teljes konfigurációt összegyűjtő hibajelentés: az első dobott hiba megszakítja a konfiguráció összeállítását.
+The methods throw synchronous `Error`s. There is no error report that collects the whole configuration: the first thrown error aborts building the configuration.
 
-| Helyzet | Példa üzenet |
+| Situation | Example message |
 |---|---|
-| Hiányzó érték | `Missing Env variable (string): DATABASE_URL` |
-| Hibás érték | `Env variable type failed: PORT (int)` |
-| Hibás listaelem | `Env variable type failed: ALLOWED_PORTS[0] - invalid` |
-| URL-leképezési hiba | `Env variable URL map failed: SERVICE_URL - ...` |
-| Nem fájl | `Env variable path is not a file: TLS_CERT - ...` |
+| Missing value | `Missing Env variable (string): DATABASE_URL` |
+| Invalid value | `Env variable type failed: PORT (int)` |
+| Invalid list item | `Env variable type failed: ALLOWED_PORTS[0] - invalid` |
+| URL mapping error | `Env variable URL map failed: SERVICE_URL - ...` |
+| Not a file | `Env variable path is not a file: TLS_CERT - ...` |
 
-> [!danger] Titkok a hibaüzenetekben
-> Egyes üzenetek listaelemet, default URL-t vagy abszolút fájlrendszerutat tartalmaznak. Naplózás előtt gondold át a redakciót; ne naplózd a teljes konfigurációs objektumot vagy a `process.env` tartalmát.
+> [!danger] Secrets in error messages
+> Some messages contain a list item, a default URL, or an absolute filesystem path. Think about redaction before logging; do not log the whole configuration object or the contents of `process.env`.
 
-## Ellenőrzési lista integrációhoz
+## Integration checklist
 
-- [ ] A környezet betöltése megelőzi a konfiguráció összeállítását.
-- [ ] A projektgyökér abszolút és a futtatási helytől függetlenül helyes.
-- [ ] A kötelező titkokhoz nincs kényelmi default.
-- [ ] Az üres stringeket külön ellenőrzöd, ahol szükséges.
-- [ ] A számok tartományát és a URL-ek domain szabályait validálod.
-- [ ] A szolgáltatások csak sikeres konfiguráció-ellenőrzés után indulnak.
-- [ ] Tesztekben visszaállítod a módosított környezeti változókat és eltakarítod az ideiglenes fájlokat.
+- [ ] Loading the environment happens before building the configuration.
+- [ ] The project root is absolute and correct regardless of where the app is run from.
+- [ ] Required secrets have no convenience default.
+- [ ] You check empty strings separately where needed.
+- [ ] You validate number ranges and the domain rules of URLs.
+- [ ] Services start only after the configuration has been validated.
+- [ ] In tests, you restore modified environment variables and clean up temporary files.
 
-> [!note] Ismételt olvasás
-> Az `EnvReader` nem készít környezeti snapshotot. Minden metódushívás az aktuális `process.env`-et olvassa. A fenti egyszer összeállított konfiguráció viszont nem frissül automatikusan későbbi környezetváltozáskor.
+> [!note] Repeated reads
+> `EnvReader` does not take an environment snapshot. Every method call reads the current `process.env`. The configuration built once above, however, does not update automatically when the environment changes later.

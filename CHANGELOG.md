@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add a Hungarian BookMD documentation book in `book/` with installation, value parsing, URL mapping, path handling, and integration guidance, including Mermaid diagrams and callouts explaining implementation limitations.
+- Add an English BookMD documentation book in `book/` with installation, value parsing, URL mapping, path handling, and integration guidance, including Mermaid diagrams and callouts explaining implementation limitations.
+
+### Changed
+
+- Translate the BookMD documentation book from Hungarian to English and set its language to `en`.
 
 ---
 

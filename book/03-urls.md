@@ -1,23 +1,23 @@
 ---
-title: URL-ek és leképezések
+title: URLs and Mappings
 type: chapter
-teaches: [URL-validálás, URL-leképezés]
+teaches: [URL validation, URL mapping]
 ---
-# URL-ek és leképezések
+# URLs and Mappings
 
-## URL-objektum
+## The URL object
 
 ```typescript
 const api = env.url("API_URL", "https://api.example.com/v1/");
-console.log(api.hostname); // A konfigurált URL hostname értéke
+console.log(api.hostname); // The hostname of the configured URL
 ```
 
-A visszatérési érték szabványos `URL` objektum. A környezeti szöveg trim után kerül a konstruktorba. A default URL is feldolgozásra és ellenőrzésre kerül.
+The return value is a standard `URL` object. The environment string is trimmed before it is passed to the constructor. The default URL is also parsed and validated.
 
-> [!warning] Érvényes URL nem feltétlenül megengedett URL
-> A metódus nem korlátozza a protokollt HTTPS-re és nem alkalmaz host-engedélylistát. Ha a felhasználási hely ezt igényli, külön ellenőrizd a `protocol` és `hostname` mezőket.
+> [!warning] A valid URL is not necessarily an allowed URL
+> The method does not restrict the protocol to HTTPS and does not apply a host allowlist. If your use case needs that, check the `protocol` and `hostname` fields separately.
 
-## Típusos komponens-leképezés
+## Typed component mapping
 
 ```typescript
 // S3_URL=s3://accessKey:secretKey@storage.example.com/assets/files/
@@ -30,40 +30,40 @@ const storage = env.url("S3_URL", {
         prefix: ["path(1,end)", ""],
     },
 });
-// bucket: "assets", prefix: "files/"; minden mező string
+// bucket: "assets", prefix: "files/"; every field is a string
 ```
 
-A második argumentum az opciós objektum: `map` és opcionális `defaultValue`. A kimenet kulcsai a map kulcsaival egyeznek; minden érték string.
+The second argument is the options object: `map` and an optional `defaultValue`. The output keys match the keys of the map; every value is a string.
 
-| Selector | Jelentés |
+| Selector | Meaning |
 |---|---|
-| `protocol` | Protokoll kettősponttal, például `https:`. |
-| `username`, `password` | Percent-decoded hitelesítési komponensek. |
-| `hostname` | Hostnév port nélkül. |
-| `host` | Hostnév a URL-objektumban megmaradt porttal. |
-| `port` | Port stringként; lehet üres. |
-| `origin` | `${protocol}//${host}` formában összeállított string. |
-| `path` | Dekódolt pathname a kezdő `/` nélkül. |
-| `hash` | Fragment a `#` jellel együtt, ha jelen van. |
-| `path(index)` | Egy dekódolt útvonalszegmens. |
-| `path(start,end)` | Inkluzív szegmenstartomány; a végindex lehet `end`. |
-| `query("name")` | Az első ilyen query-paraméter értéke; egyszeres idézőjel is használható. |
+| `protocol` | Protocol with a colon, for example `https:`. |
+| `username`, `password` | Percent-decoded credential components. |
+| `hostname` | Hostname without the port. |
+| `host` | Hostname with the port, if the URL object keeps one. |
+| `port` | Port as a string; may be empty. |
+| `origin` | String assembled as `${protocol}//${host}`. |
+| `path` | Decoded pathname without the leading `/`. |
+| `hash` | Fragment including the `#`, when present. |
+| `path(index)` | One decoded path segment. |
+| `path(start,end)` | Inclusive segment range; the end index may be `end`. |
+| `query("name")` | Value of the first query parameter with that name; single quotes also work. |
 
-A URL-konstruktor normalizálhatja az értékeket, például az alapértelmezett portot eltávolíthatja. Az `origin` itt a csomag saját összeállítása, nem közvetlenül a `URL.origin` tulajdonság.
+The URL constructor may normalize values, for example by removing a default port. Here `origin` is assembled by the package itself, not taken directly from the `URL.origin` property.
 
-## Útvonalszegmensek
+## Path segments
 
-Az indexelés nullától indul; a negatív index hátulról számol. Az indexelt selectorok a split során az üres szegmenseket elhagyják.
+Indexing is zero-based; a negative index counts from the end. Indexed selectors drop empty segments during the split.
 
-A `/assets/images/logo.svg` útvonalon:
+For the path `/assets/images/logo.svg`:
 
 - `path(0)` → `assets`
 - `path(-1)` → `logo.svg`
 - `path(1,end)` → `images/logo.svg`
 
-A tartomány, ha eléri az utolsó szegmenst, megőrzi a URL záró `/` jelét, amennyiben volt ilyen. Egyetlen szegmens kiválasztása nem teszi hozzá ezt a jelet.
+When a range reaches the last segment, it keeps the URL's trailing `/` if there was one. Selecting a single segment does not add it.
 
-## Fallbackok pontosan
+## Fallbacks, precisely
 
 ```typescript
 const endpoint = env.url("SERVICE_URL", {
@@ -76,9 +76,9 @@ const endpoint = env.url("SERVICE_URL", {
 });
 ```
 
-> [!warning] Nem minden üres komponens vált ki fallbackot
-> A fallback csak hiányzó query-paraméternél és a tartományon kívüli útvonalszegmensnél működik. Egy hiányzó `username`, `password`, `port` vagy `hash` üres stringként tér vissza, fallback nélkül is. A `?token=` szintén üres stringet ad, nem defaultot.
+> [!warning] Not every empty component triggers a fallback
+> A fallback applies only to a missing query parameter and to a path segment out of range. A missing `username`, `password`, `port`, or `hash` comes back as an empty string even without a fallback. `?token=` also yields an empty string, not the default.
 
-Érvénytelen selector vagy hibás percent-encoding esetén a fallback nem nyeli el a hibát. A leképezési hibák üzenete `Env variable URL map failed: KEY - ...` előtagot kap.
+An invalid selector or malformed percent-encoding is not swallowed by the fallback. Mapping errors are prefixed with `Env variable URL map failed: KEY - ...`.
 
-Tovább: [[04-paths|Fájlok és könyvtárak]].
+Continue with [[04-paths|Files and Directories]].

@@ -1,17 +1,17 @@
 ---
-title: Első lépések
+title: Getting Started
 type: chapter
-teaches: [telepítés, induláskori konfiguráció]
+teaches: [installation, startup configuration]
 ---
-# Első lépések
+# Getting Started
 
-## Telepítés
+## Installation
 
 ```sh
 npm install @atom-forge/env-reader
 ```
 
-A publikus belépési pontból importáld az `EnvReader` osztályt és szükség esetén az `asReadonly` függvényt.
+Import the `EnvReader` class and, when needed, the `asReadonly` function from the public entry point.
 
 ```typescript
 import { EnvReader, asReadonly } from "@atom-forge/env-reader";
@@ -25,33 +25,33 @@ export const config = asReadonly({
 });
 ```
 
-A `process.cwd()` abszolút útvonal, de a folyamat munkakönyvtárát jelenti. Csak akkor használd projektgyökérként, ha az alkalmazást valóban onnan indítod; más esetben adj át explicit abszolút projektútvonalat.
+`process.cwd()` is an absolute path, but it means the working directory of the process. Use it as the project root only if you really start the application from there; otherwise pass an explicit absolute project path.
 
-## Az indulás menete
+## How startup works
 
 ```mermaid
 flowchart TD
-    A[Alkalmazás indulása] --> B[Környezeti változók rendelkezésre állnak]
-    B --> C[Konfiguráció összeállítása az EnvReaderrel]
-    C --> D{Sikeres beolvasás?}
-    D -->|Igen| E[Típusos konfiguráció]
-    E --> F[Szolgáltatások indítása]
-    D -->|Nem| G[Indulás megszakítása hibával]
+    A[Application starts] --> B[Environment variables are available]
+    B --> C[Build the configuration with EnvReader]
+    C --> D{Read succeeded?}
+    D -->|Yes| E[Typed configuration]
+    E --> F[Start services]
+    D -->|No| G[Abort startup with an error]
 ```
 
-> [!warning] A környezet betöltése a te feladatod
-> Az `EnvReader` nem olvas `.env` fájlt. Ha ilyen fájlból töltöd a környezetet, ezt a konfiguráció összeállítása előtt végezd el a futtatókörnyezet vagy egy külön betöltő segítségével.
+> [!warning] Loading the environment is your job
+> `EnvReader` does not read `.env` files. If you load the environment from such a file, do it before building the configuration, using the runtime or a separate loader.
 
-## Kötelező érték vagy default?
+## Required value or default?
 
-Ha egy változó `undefined`, default nélkül a metódus hibát dob. A default általában csak a hiányzó változót helyettesíti: egy jelen lévő, de hibás értéket nem javít ki.
+If a variable is `undefined` and no default is given, the method throws. A default normally replaces only a missing variable: it does not repair a value that is present but invalid.
 
 ```typescript
 const required = env.string("DATABASE_URL");
 const optional = env.boolean("DEBUG", false);
 ```
 
-> [!note] Üres nem egyenlő hiányzóval
-> A `KEY=""` jelen lévő változó. A `string()` üres szöveget adhat vissza, a `list()` üres listát; más metódusok hibát dobhatnak. Ha nem üres szöveget vársz, ezt külön ellenőrizd.
+> [!note] Empty is not the same as missing
+> `KEY=""` is a present variable. `string()` may return an empty string and `list()` an empty list; other methods may throw. If you expect a non-empty string, check it separately.
 
-A következő fejezet: [[02-values|Értékek és listák]].
+Next chapter: [[02-values|Values and Lists]].

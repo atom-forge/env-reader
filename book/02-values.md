@@ -1,22 +1,22 @@
 ---
-title: Értékek és listák
+title: Values and Lists
 type: chapter
-requires: [induláskori konfiguráció]
-teaches: [értékek beolvasása, listák feldolgozása]
+requires: [startup configuration]
+teaches: [reading values, parsing lists]
 ---
-# Értékek és listák
+# Values and Lists
 
-## Metódusok áttekintése
+## Method overview
 
-| Hívás | Eredmény | Viselkedés |
+| Call | Result | Behavior |
 |---|---|---|
-| `string(key, defaultValue?, trim = true)` | `string` | Alapból levágja a szélső whitespace-t. |
-| `int(key, defaultValue?, radix = 10)` | `number` | `parseInt` alapú feldolgozás. |
-| `float(key, defaultValue?)` | `number` | `parseFloat` alapú feldolgozás. |
-| `boolean(key, defaultValue?)` | `boolean` | `true/false`, `yes/no`, `1/0`; nem kis- és nagybetűérzékeny. |
-| `oneOf(key, values, defaultValue?)` | megengedett stringtípus | Trim után pontos, kis- és nagybetűérzékeny egyezést keres. |
-| `regex(key, defaultValue?)` | `RegExp` | Trim után `new RegExp` konstruktorral dolgozik. |
-| `list(key, parser, defaultValue?, separator = ",")` | `T[]` | Darabolás, trim, üres elemek szűrése, parser. |
+| `string(key, defaultValue?, trim = true)` | `string` | Trims surrounding whitespace by default. |
+| `int(key, defaultValue?, radix = 10)` | `number` | Based on `parseInt`. |
+| `float(key, defaultValue?)` | `number` | Based on `parseFloat`. |
+| `boolean(key, defaultValue?)` | `boolean` | `true/false`, `yes/no`, `1/0`; case-insensitive. |
+| `oneOf(key, values, defaultValue?)` | allowed string type | After trimming, looks for an exact, case-sensitive match. |
+| `regex(key, defaultValue?)` | `RegExp` | After trimming, uses the `new RegExp` constructor. |
+| `list(key, parser, defaultValue?, separator = ",")` | `T[]` | Split, trim, drop empty items, parse. |
 
 ```typescript
 const name = env.string("APP_NAME", "My app");
@@ -28,13 +28,13 @@ const mode = env.oneOf("APP_ENV", ["dev", "prod", "test"], "prod");
 const pattern = env.regex("NAME_PATTERN", /^[a-z]+$/i);
 ```
 
-> [!warning] A számparser nem szigorú validátor
-> Az `int()` és `float()` csak a `NaN` eredményt utasítja el. Például az `int()` a `"12px"` értéket `12`-ként olvassa, a `float()` pedig elfogadhatja az `Infinity` értéket. Tartományt, véges értéket vagy teljes szöveges egyezést külön ellenőrizz.
+> [!warning] The number parsers are not strict validators
+> `int()` and `float()` reject only a `NaN` result. For example, `int()` reads `"12px"` as `12`, and `float()` may accept `Infinity`. Check ranges, finiteness, or a full-string match separately.
 
-> [!note] Defaultok
-> A string-, szám-, boolean-, oneOf-, regex- és list-defaultok közvetlenül kerülnek visszaadásra, újrafeldolgozás nélkül. Megbízható, előre ellenőrzött értékeket adj meg.
+> [!note] Defaults
+> String, number, boolean, oneOf, regex, and list defaults are returned directly, without being parsed again. Provide trusted, pre-validated values.
 
-## Listák
+## Lists
 
 ```typescript
 // ALLOWED_HOSTS= example.com, api.example.com, ,
@@ -46,14 +46,14 @@ const labels = env.list("LABELS", value => value, [], ";");
 
 ```mermaid
 flowchart TD
-    A[Környezeti szöveg] --> B[Darabolás separator szerint]
-    B --> C[Whitespace levágása]
-    C --> D[Üres elemek eltávolítása]
-    D --> E[Parser minden megmaradt elemre]
-    E --> F[Típusos lista]
+    A[Environment string] --> B[Split by separator]
+    B --> C[Trim whitespace]
+    C --> D[Remove empty items]
+    D --> E[Run the parser on each remaining item]
+    E --> F[Typed list]
 ```
 
-A parsernek dobnia kell, ha hibás elemet észlel. A könyvtár nem tekinti automatikusan hibának a visszaadott `NaN` értéket.
+The parser must throw when it finds an invalid item. The library does not automatically treat a returned `NaN` as an error.
 
 ```typescript
 const ports = env.list("ALLOWED_PORTS", value => {
@@ -66,11 +66,11 @@ const ports = env.list("ALLOWED_PORTS", value => {
 });
 ```
 
-> [!info] Hibás listaelem
-> A parser hibája `Env variable type failed: KEY[index] - value` hibává alakul. Az index az üres elemek kiszűrése utáni, nullától induló index; az eredeti parserhiba üzenete nem marad meg.
+> [!info] Invalid list item
+> A parser error becomes an `Env variable type failed: KEY[index] - value` error. The index is zero-based and counted after empty items are removed; the original parser error message is not preserved.
 
-## Reguláris kifejezések
+## Regular expressions
 
-A környezeti érték maga a minta, nem JavaScript regexliterál. A `^[a-z]+$` megfelelő; a `/^[a-z]+$/i` szöveg nem kapcsolja be az `i` flaget. A környezetből olvasott mintákhoz nincs külön flags-paraméter; egy default `RegExp` objektumnak lehetnek flagjei.
+The environment value is the pattern itself, not a JavaScript regex literal. `^[a-z]+$` is correct; the text `/^[a-z]+$/i` does not enable the `i` flag. There is no separate flags parameter for patterns read from the environment; a default `RegExp` object may have flags.
 
-Tovább: [[03-urls|URL-ek és leképezések]].
+Continue with [[03-urls|URLs and Mappings]].
