@@ -1,6 +1,7 @@
 ---
 name: Env Reader
 subtitle: "@atom-forge/env-reader"
+author: AtomForge
 id: atom-forge-env-reader
 language: hu
 tags: [typescript, configuration, environment]
