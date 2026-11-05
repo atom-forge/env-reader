@@ -11,11 +11,11 @@ teaches: [reading values, parsing lists]
 | Call | Result | Behavior |
 |---|---|---|
 | `string(key, defaultValue?, trim = true)` | `string` | Trims surrounding whitespace by default. |
-| `int(key, defaultValue?, radix = 10)` | `number` | Based on `parseInt`. |
-| `float(key, defaultValue?)` | `number` | Based on `parseFloat`. |
+| `int(key, defaultValue?, radix = 10)` | `number` | The whole value must be an integer in the given radix (2–36); a `0x` prefix is allowed for radix 16. |
+| `float(key, defaultValue?)` | `number` | The whole value must be a finite decimal number, optionally with an exponent. |
 | `boolean(key, defaultValue?)` | `boolean` | `true/false`, `yes/no`, `1/0`; case-insensitive. |
-| `oneOf(key, values, defaultValue?)` | allowed string type | After trimming, looks for an exact, case-sensitive match. |
-| `regex(key, defaultValue?)` | `RegExp` | After trimming, uses the `new RegExp` constructor. |
+| `oneOf(key, values, defaultValue?)` | allowed string type | After trimming, looks for an exact, case-sensitive match. `values` may be an `as const` array. |
+| `regex(key, defaultValue?)` | `RegExp` | After trimming, uses the `new RegExp` constructor; an empty pattern is rejected. |
 | `list(key, parser, defaultValue?, separator = ",")` | `T[]` | Split, trim, drop empty items, parse. |
 
 ```typescript
@@ -28,8 +28,8 @@ const mode = env.oneOf("APP_ENV", ["dev", "prod", "test"], "prod");
 const pattern = env.regex("NAME_PATTERN", /^[a-z]+$/i);
 ```
 
-> [!warning] The number parsers are not strict validators
-> `int()` and `float()` reject only a `NaN` result. For example, `int()` reads `"12px"` as `12`, and `float()` may accept `Infinity`. Check ranges, finiteness, or a full-string match separately.
+> [!warning] Number parsers check the format, not the range
+> `int()` and `float()` reject partial matches such as `"12px"` or `"1.5"` (for `int()`), as well as `Infinity`, `NaN`, hexadecimal floats, and integers beyond `Number.MAX_SAFE_INTEGER`. Minimums, maximums, and other domain ranges are still your job.
 
 > [!note] Defaults
 > String, number, boolean, oneOf, regex, and list defaults are returned directly, without being parsed again. Provide trusted, pre-validated values.
@@ -71,6 +71,6 @@ const ports = env.list("ALLOWED_PORTS", value => {
 
 ## Regular expressions
 
-The environment value is the pattern itself, not a JavaScript regex literal. `^[a-z]+$` is correct; the text `/^[a-z]+$/i` does not enable the `i` flag. There is no separate flags parameter for patterns read from the environment; a default `RegExp` object may have flags.
+The environment value is the pattern itself, not a JavaScript regex literal. `^[a-z]+$` is correct; the text `/^[a-z]+$/i` does not enable the `i` flag. There is no separate flags parameter for patterns read from the environment; a default `RegExp` object may have flags. An empty (or whitespace-only) value throws instead of producing a pattern that matches everything.
 
-Continue with [[03-urls|URLs and Mappings]].
+Continue with [[urls|URLs and Mappings]].

@@ -7,11 +7,12 @@ language: en
 tags: [typescript, configuration, environment]
 intro: Typed application configuration from environment variables, validated at startup.
 children:
-  - "[[01-start.md]]"
-  - "[[02-values.md]]"
-  - "[[03-urls.md]]"
-  - "[[04-paths.md]]"
-  - "[[05-integration.md]]"
+  - "[[start.md]]"
+  - "[[values.md]]"
+  - "[[urls.md]]"
+  - "[[paths.md]]"
+  - "[[integration.md]]"
+  - "[[upgrading.md]]"
   - "[AI Notes](ai-notes.md)"
 ---
 # @atom-forge/env-reader
@@ -20,8 +21,10 @@ This book shows how to read environment configuration in TypeScript applications
 
 `EnvReader` reads the current values of `process.env` with synchronous methods. Errors surface when you call those methods, so to validate at startup you must build the configuration when the application starts.
 
+The book is for developers of Node-compatible TypeScript applications (Node.js, Bun, Deno with Node compatibility) who want their configuration typed and validated in one place.
+
 > [!tip] Recommended reading order
-> Start with the [[01-start|Getting Started]] chapter, then read the data types you need. [[05-integration|Integration and Error Handling]] closes the book with a complete configuration example.
+> Start with the [[start|Getting Started]] chapter, then read the data types you need. [[integration|Integration and Error Handling]] gives a complete configuration example. Upgrading from an earlier version? Read [[upgrading|Upgrading]]. Working with a coding agent? [AI Notes](ai-notes.md) has instructions you can copy into your project.
 
 ## What you get
 

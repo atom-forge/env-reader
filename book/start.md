@@ -52,6 +52,6 @@ const optional = env.boolean("DEBUG", false);
 ```
 
 > [!note] Empty is not the same as missing
-> `KEY=""` is a present variable. `string()` may return an empty string and `list()` an empty list; other methods may throw. If you expect a non-empty string, check it separately.
+> `KEY=""` is a present variable, so the default does not apply. `string()` returns an empty string and `list()` an empty list; every other method throws. If you expect a non-empty string, check it separately.
 
-Next chapter: [[02-values|Values and Lists]].
+Next chapter: [[values|Values and Lists]].

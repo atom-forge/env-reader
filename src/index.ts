@@ -12,16 +12,24 @@ export interface UrlOptions<T extends UrlMap> {
 	defaultValue?: string;
 	map: T;
 }
-export type DeepReadonly<T> = { readonly [K in keyof T]: T[K] extends object ? DeepReadonly<T[K]> : T[K] }
 
-function decodeUrlComponent(value: string): string {
-	return decodeURIComponent(value);
-}
+type Primitive = string | number | boolean | bigint | symbol | null | undefined;
+type ReadonlyLeaf = Primitive | ((...args: any[]) => unknown) | Date | RegExp | URL | Error;
+export type DeepReadonly<T> =
+	T extends ReadonlyLeaf ? T
+	: T extends ReadonlyMap<infer K, infer V> ? ReadonlyMap<DeepReadonly<K>, DeepReadonly<V>>
+	: T extends ReadonlySet<infer V> ? ReadonlySet<DeepReadonly<V>>
+	: { readonly [K in keyof T]: DeepReadonly<T[K]> };
 
 class UrlMapValueMissingError extends Error {}
 
-function urlPathSegments(url: URL): string[] {
-	return url.pathname.split("/").filter(Boolean).map(decodeUrlComponent);
+function decodeUrlComponent(value: string, selector: string): string {
+	try { return decodeURIComponent(value); }
+	catch { throw Error(`Malformed percent-encoding in URL component: ${selector}`); }
+}
+
+function urlPathSegments(url: URL, selector: string): string[] {
+	return url.pathname.split("/").filter(Boolean).map(segment => decodeUrlComponent(segment, selector));
 }
 
 function resolvePathIndex(index: number, length: number): number {
@@ -32,7 +40,7 @@ function selectUrlPath(url: URL, selector: string): string {
 	const match = /^path\((-?\d+)(?:,(-?\d+|end))?\)$/.exec(selector);
 	if (!match) throw Error(`Invalid URL path selector: ${selector}`);
 
-	const segments = urlPathSegments(url);
+	const segments = urlPathSegments(url, selector);
 	const start = resolvePathIndex(Number(match[1]), segments.length);
 	const end = match[2] === undefined ? start : match[2] === "end" ? segments.length - 1 : resolvePathIndex(Number(match[2]), segments.length);
 
@@ -45,7 +53,7 @@ function selectUrlPath(url: URL, selector: string): string {
 
 function selectUrlMapValue(url: URL, selector: UrlMapSelector): string {
 	if (/^path\(/.test(selector)) return selectUrlPath(url, selector);
-	if (selector === "path") return url.pathname.slice(1).split("/").map(decodeUrlComponent).join("/");
+	if (selector === "path") return url.pathname.slice(1).split("/").map(segment => decodeUrlComponent(segment, selector)).join("/");
 
 	const queryMatch = /^query\((["'])(.*)\1\)$/.exec(selector);
 	if (queryMatch) {
@@ -57,8 +65,8 @@ function selectUrlMapValue(url: URL, selector: UrlMapSelector): string {
 	switch (selector) {
 		case "protocol": return url.protocol;
 		case "origin": return `${url.protocol}//${url.host}`;
-		case "username": return decodeUrlComponent(url.username);
-		case "password": return decodeUrlComponent(url.password);
+		case "username": return decodeUrlComponent(url.username, selector);
+		case "password": return decodeUrlComponent(url.password, selector);
 		case "hostname": return url.hostname;
 		case "host": return url.host;
 		case "port": return url.port;
@@ -80,12 +88,58 @@ function resolveUrlMapValue(url: URL, value: UrlMapValue): string {
 	}
 }
 
+const DECIMAL_FLOAT = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
+
+function parseStrictInt(value: string, radix: number): number {
+	let digits = value;
+	let sign = 1;
+	if (digits[0] === "+" || digits[0] === "-") {
+		if (digits[0] === "-") sign = -1;
+		digits = digits.slice(1);
+	}
+	if (radix === 16 && /^0x/i.test(digits)) digits = digits.slice(2);
+	if (digits === "") return NaN;
+	for (const char of digits.toLowerCase()) {
+		const digit = parseInt(char, 36);
+		if (isNaN(digit) || digit >= radix) return NaN;
+	}
+	const result = sign * parseInt(digits, radix);
+	return Number.isSafeInteger(result) ? result : NaN;
+}
+
+function isWithin(root: string, target: string): boolean {
+	const relative = path.relative(root, target);
+	return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+
+/** Canonical path of `target`, resolving symlinks through its nearest existing ancestor. */
+function canonicalPath(target: string): string {
+	const missing: string[] = [];
+	let current = target;
+	while (true) {
+		try { return path.join(fs.realpathSync(current), ...missing); }
+		catch {
+			const parent = path.dirname(current);
+			if (parent === current) return target;
+			missing.unshift(path.basename(current));
+			current = parent;
+		}
+	}
+}
+
 export function asReadonly<T>(value: T): DeepReadonly<T> {
 	return value as DeepReadonly<T>;
 }
 
 export class EnvReader {
-	constructor(private readonly projectRoot: string) {}
+	private readonly projectRoot: string;
+
+	/**
+	 * @param projectRoot Project root used to resolve relative file and directory paths. Normalized with `path.resolve`.
+	 */
+	constructor(projectRoot: string) {
+		this.projectRoot = path.resolve(projectRoot);
+	}
 
 	/**
 	 * Get an env var and validate it against a set of allowed values.
@@ -95,8 +149,8 @@ export class EnvReader {
 	 * @returns The validated value.
 	 * @throws Error When missing without default or value is not in the allowed set.
 	 */
-	oneOf<T extends string>(key: string, values: T[], defaultValue?: T): T {
-		let envValue = process.env[key];
+	oneOf<T extends string>(key: string, values: readonly T[], defaultValue?: T): T {
+		const envValue = process.env[key];
 		if (envValue === undefined) {
 			if (defaultValue !== undefined) return defaultValue;
 			throw Error(`Missing Env variable (oneOf): ${key}`);
@@ -111,16 +165,17 @@ export class EnvReader {
 	 * @param key Env var name.
 	 * @param defaultValue Fallback value when missing.
 	 * @returns Parsed float value.
-	 * @throws Error When missing without default or not a valid float.
+	 * @throws Error When missing without default, not a decimal number (e.g. `12px`), or not finite.
 	 */
 	float(key: string, defaultValue?: number): number {
-		let envValue = process.env[key];
+		const envValue = process.env[key];
 		if (envValue === undefined) {
 			if (defaultValue !== undefined) return defaultValue;
 			throw Error(`Missing Env variable (float): ${key}`);
 		}
-		let value = parseFloat(envValue.trim());
-		if (isNaN(value)) throw Error(`Env variable type failed: ${key} (float)`);
+		const trimmed = envValue.trim();
+		const value = DECIMAL_FLOAT.test(trimmed) ? Number(trimmed) : NaN;
+		if (!Number.isFinite(value)) throw Error(`Env variable type failed: ${key} (float)`);
 		return value;
 	}
 
@@ -128,17 +183,18 @@ export class EnvReader {
 	 * Get an env var as int; uses default when provided.
 	 * @param key Env var name.
 	 * @param defaultValue Fallback value when missing.
-	 * @param radix Number base for parsing (default 10).
+	 * @param radix Number base for parsing, 2–36 (default 10). With radix 16 a `0x` prefix is allowed.
 	 * @returns Parsed integer value.
-	 * @throws Error When missing without default or not a valid integer.
+	 * @throws Error When missing without default, not a whole integer in the given radix (e.g. `12px`), or not a safe integer.
 	 */
 	int(key: string, defaultValue?: number, radix: number = 10): number {
-		let envValue = process.env[key];
+		if (!Number.isInteger(radix) || radix < 2 || radix > 36) throw Error(`Invalid radix for Env variable (int): ${key} - ${radix}`);
+		const envValue = process.env[key];
 		if (envValue === undefined) {
 			if (defaultValue !== undefined) return defaultValue;
 			throw Error(`Missing Env variable (int): ${key}`);
 		}
-		let value = parseInt(envValue.trim(), radix);
+		const value = parseStrictInt(envValue.trim(), radix);
 		if (isNaN(value)) throw Error(`Env variable type failed: ${key} (int)`);
 		return value;
 	}
@@ -151,13 +207,14 @@ export class EnvReader {
 	 * @throws Error When missing without default or value is invalid.
 	 */
 	boolean(key: string, defaultValue?: boolean): boolean {
-		let envValue = process.env[key];
+		const envValue = process.env[key];
 		if (envValue === undefined) {
 			if (defaultValue !== undefined) return defaultValue;
 			throw Error(`Missing Env variable (boolean): ${key}`);
 		}
-		if (["1", "yes", "true"].indexOf(envValue.toLowerCase().trim()) != -1) return true;
-		if (["0", "no", "false"].indexOf(envValue.toLowerCase().trim()) != -1) return false;
+		const normalized = envValue.toLowerCase().trim();
+		if (["1", "yes", "true"].includes(normalized)) return true;
+		if (["0", "no", "false"].includes(normalized)) return false;
 		throw Error(`Env variable type failed: ${key} (boolean) - expected true/false, yes/no, 1/0 value`);
 	}
 
@@ -170,7 +227,7 @@ export class EnvReader {
 	 * @throws Error When missing without default.
 	 */
 	string(key: string, defaultValue?: string, trim: boolean = true): string {
-		let envValue = process.env[key];
+		const envValue = process.env[key];
 		if (envValue === undefined) {
 			if (defaultValue !== undefined) return defaultValue;
 			throw Error(`Missing Env variable (string): ${key}`);
@@ -190,12 +247,12 @@ export class EnvReader {
 	url<T extends UrlMap>(key: string, defaultValueOrOptions?: string | UrlOptions<T>): URL | UrlMapResult<T> {
 		const options = typeof defaultValueOrOptions === "string" || defaultValueOrOptions === undefined ? undefined : defaultValueOrOptions;
 		const defaultValue = typeof defaultValueOrOptions === "string" ? defaultValueOrOptions : options?.defaultValue;
-		let envValue = process.env[key];
+		const envValue = process.env[key];
 		let url: URL;
 		if (envValue === undefined) {
 			if (defaultValue === undefined) throw Error(`Missing Env variable (url): ${key}`);
 			try { url = new URL(defaultValue); }
-			catch { throw Error(`Env variable default is not a valid url: ${key} - ${defaultValue}`); }
+			catch { throw Error(`Env variable default is not a valid url: ${key}`); }
 		} else {
 			try { url = new URL(envValue.trim()); }
 			catch { throw Error(`Env variable type failed: ${key} (url)`); }
@@ -215,15 +272,17 @@ export class EnvReader {
 	 * @param key Env var name.
 	 * @param defaultValue Fallback RegExp when missing.
 	 * @returns RegExp instance.
-	 * @throws Error When missing without default or not a valid pattern.
+	 * @throws Error When missing without default, empty, or not a valid pattern.
 	 */
 	regex(key: string, defaultValue?: RegExp): RegExp {
-		let envValue = process.env[key];
+		const envValue = process.env[key];
 		if (envValue === undefined) {
 			if (defaultValue !== undefined) return defaultValue;
 			throw Error(`Missing Env variable (regex): ${key}`);
 		}
-		try { return new RegExp(envValue.trim()); } catch { throw Error(`Env variable type failed: ${key} (regex)`); }
+		const pattern = envValue.trim();
+		if (pattern === "") throw Error(`Env variable type failed: ${key} (regex) - empty pattern`);
+		try { return new RegExp(pattern); } catch { throw Error(`Env variable type failed: ${key} (regex)`); }
 	}
 
 	/**
@@ -236,7 +295,7 @@ export class EnvReader {
 	 * @throws Error When missing without default or an item fails to parse.
 	 */
 	list<T>(key: string, parser: (value: string) => T, defaultValue?: T[], separator: string = ","): T[] {
-		let envValue = process.env[key];
+		const envValue = process.env[key];
 		if (envValue === undefined) {
 			if (defaultValue !== undefined) return defaultValue;
 			throw Error(`Missing Env variable (list): ${key}`);
@@ -252,60 +311,48 @@ export class EnvReader {
 
 	/**
 	 * Resolve an env var to a file path; validates existence and optional project-root bounds.
+	 * Relative paths are always resolved against the project root.
 	 * @param key Env var name.
 	 * @param defaultValue Fallback path when missing.
-	 * @param onMissing true to throw, or handler for missing file.
+	 * @param onMissing true to throw, false to ignore, or handler for missing file.
 	 * @param stayInProject Enforce project-root bounds (default true).
 	 * @returns Resolved file path.
-	 * @throws Error When missing without default, path escapes root, or not a file.
+	 * @throws Error When missing without default, empty, path escapes root, or not a file.
 	 */
 	file(key: string, defaultValue?: string, onMissing: OnMissing = true, stayInProject: boolean = true): string {
-		let envValue = process.env[key];
-		if (envValue === undefined) {
-			if (defaultValue !== undefined) envValue = defaultValue;
-			else throw Error(`Missing Env variable (file): ${key}`);
-		}
-
-		const resolved = stayInProject
-			? path.resolve(this.projectRoot, envValue.trim())
-			: path.resolve(envValue.trim());
-
-		if (stayInProject && !resolved.startsWith(this.projectRoot))
-			throw Error(`Env variable path escapes project root: ${key} - ${resolved}`);
-
-		if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
-			if (onMissing === true) throw Error(`Env variable path is not a file: ${key} - ${resolved}`);
-			if (typeof onMissing === "function") onMissing(resolved);
-		}
-
-		return resolved;
+		return this.resolvePath("file", key, defaultValue, onMissing, stayInProject);
 	}
 
 	/**
 	 * Resolve an env var to a directory path; validates existence and optional project-root bounds.
+	 * Relative paths are always resolved against the project root.
 	 * @param key Env var name.
 	 * @param defaultValue Fallback path when missing.
-	 * @param onMissing true to throw, or handler for missing directory.
+	 * @param onMissing true to throw, false to ignore, or handler for missing directory.
 	 * @param stayInProject Enforce project-root bounds (default true).
 	 * @returns Resolved directory path.
-	 * @throws Error When missing without default, path escapes root, or not a directory.
+	 * @throws Error When missing without default, empty, path escapes root, or not a directory.
 	 */
 	dir(key: string, defaultValue?: string, onMissing: OnMissing = true, stayInProject: boolean = true): string {
-		let envValue = process.env[key];
-		if (envValue === undefined) {
-			if (defaultValue !== undefined) envValue = defaultValue;
-			else throw Error(`Missing Env variable (dir): ${key}`);
+		return this.resolvePath("dir", key, defaultValue, onMissing, stayInProject);
+	}
+
+	private resolvePath(kind: "file" | "dir", key: string, defaultValue: string | undefined, onMissing: OnMissing, stayInProject: boolean): string {
+		const value = (process.env[key] ?? defaultValue)?.trim();
+		if (value === undefined) throw Error(`Missing Env variable (${kind}): ${key}`);
+		if (value === "") throw Error(`Env variable type failed: ${key} (${kind}) - empty path`);
+
+		const resolved = path.resolve(this.projectRoot, value);
+
+		if (stayInProject) {
+			if (!isWithin(this.projectRoot, resolved) || !isWithin(canonicalPath(this.projectRoot), canonicalPath(resolved)))
+				throw Error(`Env variable path escapes project root: ${key} - ${resolved}`);
 		}
 
-		const resolved = stayInProject
-			? path.resolve(this.projectRoot, envValue.trim())
-			: path.resolve(envValue.trim());
-
-		if (stayInProject && !resolved.startsWith(this.projectRoot))
-			throw Error(`Env variable path escapes project root: ${key} - ${resolved}`);
-
-		if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
-			if (onMissing === true) throw Error(`Env variable path is not a directory: ${key} - ${resolved}`);
+		const stat = fs.statSync(resolved, { throwIfNoEntry: false });
+		const matches = kind === "file" ? stat?.isFile() : stat?.isDirectory();
+		if (!matches) {
+			if (onMissing === true) throw Error(`Env variable path is not a ${kind === "file" ? "file" : "directory"}: ${key} - ${resolved}`);
 			if (typeof onMissing === "function") onMissing(resolved);
 		}
 

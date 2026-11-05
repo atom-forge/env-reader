@@ -56,7 +56,7 @@ const config = asReadonly({ db: { host: "localhost" } });
 // config.db.host = "other"; // TypeScript compile error
 ```
 
-`asReadonly<T>(value: T): DeepReadonly<T>` returns the same object, using a type assertion. It makes no copy and does not call `Object.freeze`.
+`asReadonly<T>(value: T): DeepReadonly<T>` returns the same object, using a type assertion. It makes no copy and does not call `Object.freeze`. Functions, `URL`, `RegExp`, `Date`, and `Error` values keep their own types, so they stay callable and usable; arrays, maps, and sets become their readonly variants.
 
 > [!warning] Type-level protection only
 > From JavaScript, or through another mutable reference, the object can still be modified. A readonly type is not runtime immutability or a security boundary.
@@ -74,7 +74,7 @@ The methods throw synchronous `Error`s. There is no error report that collects t
 | Not a file | `Env variable path is not a file: TLS_CERT - ...` |
 
 > [!danger] Secrets in error messages
-> Some messages contain a list item, a default URL, or an absolute filesystem path. Think about redaction before logging; do not log the whole configuration object or the contents of `process.env`.
+> Some messages contain a list item or an absolute filesystem path. Think about redaction before logging; do not log the whole configuration object or the contents of `process.env`.
 
 ## Integration checklist
 
@@ -88,3 +88,5 @@ The methods throw synchronous `Error`s. There is no error report that collects t
 
 > [!note] Repeated reads
 > `EnvReader` does not take an environment snapshot. Every method call reads the current `process.env`. The configuration built once above, however, does not update automatically when the environment changes later.
+
+Upgrading from an earlier version? Continue with [[upgrading|Upgrading]].

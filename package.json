@@ -13,30 +13,44 @@
 		"url": "https://github.com/laborci"
 	},
 	"license": "MIT",
+	"homepage": "https://github.com/atom-forge/env-reader#readme",
+	"bugs": {
+		"url": "https://github.com/atom-forge/env-reader/issues"
+	},
 	"type": "module",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"exports": {
 		".": {
-			"import": "./dist/index.js",
-			"types": "./dist/index.d.ts"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
 		}
 	},
 	"repository": {
-		"url": "git://github.com/atom-forge/env-reader.git"
+		"type": "git",
+		"url": "git+https://github.com/atom-forge/env-reader.git"
+	},
+	"engines": {
+		"node": ">=18"
 	},
 	"files": [
 		"dist",
-		"CHANGELOG.md"
+		"docs",
+		"README-AI.md",
+		"CHANGELOG.md",
+		"LICENSE"
 	],
 	"scripts": {
 		"build": "tsc",
+		"typecheck": "tsc --noEmit -p tsconfig.test.json",
+		"test": "bun test",
+		"check": "bun run typecheck && bun run test",
 		"prepublishOnly": "bun run build",
-		"release": "npm publish --access public",
 		"pub-check": "bun run scripts/pub-check.ts",
 		"pub": "bun run scripts/pub.ts"
 	},
 	"devDependencies": {
+		"@types/bun": "^1.4.4",
 		"@types/node": "^25.3.1",
 		"typescript": "^5.0.0"
 	}

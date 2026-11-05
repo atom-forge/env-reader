@@ -12,7 +12,7 @@ const api = env.url("API_URL", "https://api.example.com/v1/");
 console.log(api.hostname); // The hostname of the configured URL
 ```
 
-The return value is a standard `URL` object. The environment string is trimmed before it is passed to the constructor. The default URL is also parsed and validated.
+The return value is a standard `URL` object. The environment string is trimmed before it is passed to the constructor. The default URL is also parsed and validated; to avoid leaking credentials, the error message does not repeat the invalid default.
 
 > [!warning] A valid URL is not necessarily an allowed URL
 > The method does not restrict the protocol to HTTPS and does not apply a host allowlist. If your use case needs that, check the `protocol` and `hostname` fields separately.
@@ -79,6 +79,6 @@ const endpoint = env.url("SERVICE_URL", {
 > [!warning] Not every empty component triggers a fallback
 > A fallback applies only to a missing query parameter and to a path segment out of range. A missing `username`, `password`, `port`, or `hash` comes back as an empty string even without a fallback. `?token=` also yields an empty string, not the default.
 
-An invalid selector or malformed percent-encoding is not swallowed by the fallback. Mapping errors are prefixed with `Env variable URL map failed: KEY - ...`.
+An invalid selector or malformed percent-encoding is not swallowed by the fallback. Mapping errors are prefixed with `Env variable URL map failed: KEY - ...`; a malformed escape is reported as `Malformed percent-encoding in URL component: <selector>`, without the raw value.
 
-Continue with [[04-paths|Files and Directories]].
+Continue with [[paths|Files and Directories]].

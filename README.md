@@ -17,5 +17,6 @@ npm install @atom-forge/env-reader
 
 ## Learn more
 
-- [Detailed guide and API reference](./docs/README.md): usage examples, methods, defaults, URL mapping, and path handling.
+- [Detailed guide and API reference](./docs/en/index.md) ([magyarul](./docs/hu/index.md)): usage examples, methods, defaults, URL mapping, path handling, and upgrade notes.
+- [The Env Reader book](https://books.atom-forge.eu): the same documentation as a multi-page book.
 - [AI agent entrypoint](./README-AI.md): package overview and guidance for AI-assisted integration.

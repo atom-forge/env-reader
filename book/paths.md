@@ -17,16 +17,18 @@ file(key, defaultValue?, onMissing = true, stayInProject = true)
 dir(key, defaultValue?, onMissing = true, stayInProject = true)
 ```
 
-## Resolution modes
+## Resolution
 
-- `stayInProject = true`: resolves the value with `path.resolve(projectRoot, value.trim())`, then checks the path prefix.
-- `stayInProject = false`: resolves the value with `path.resolve(value.trim())`; for a relative value, the working directory of the process counts, not the given project root.
+The value is trimmed and resolved with `path.resolve(projectRoot, value)`, regardless of `stayInProject`: a relative path always counts from the project root, an absolute path stays as it is. An empty value throws. The project root itself is normalized with `path.resolve` in the constructor.
+
+- `stayInProject = true`: the resolved path must lie inside the project root, both lexically and after resolving symlinks.
+- `stayInProject = false`: no boundary check; external absolute or `../` paths are allowed.
 
 ```mermaid
 flowchart TD
-    A[Variable or default] --> B[Trim and resolve to an absolute path]
+    A[Variable or default] --> B[Trim and resolve against the project root]
     B --> C{stayInProject?}
-    C -->|Yes| D[Check the project root prefix]
+    C -->|Yes| D[Check the project boundary]
     C -->|No| E[Filesystem check]
     D -->|Matches| E
     D -->|Does not match| F[Error]
@@ -56,7 +58,7 @@ const cache = env.dir("CACHE_DIR", "var/cache", directory => {
 > [!note] A missing variable is still an error
 > `onMissing = false` only handles the result of the filesystem check. If both the environment variable and the default are missing, the method throws.
 
-> [!danger] Not a security sandbox
-> The current project boundary is a plain `startsWith(projectRoot)` check, based neither on segment boundaries nor on realpath. A sibling directory with a similar prefix, or a symlink, may point outside. Do not use it as security isolation for untrusted input; that needs a separate canonical path and boundary check.
+> [!warning] A startup check, not a sandbox
+> The project boundary is compared by path segments, so a sibling such as `/app-evil` is not inside `/app`. Symlinks are resolved too, including those in the parent of a path that does not exist yet. The check runs once, when the method is called: if the filesystem changes later (for example a directory is replaced by a symlink), the returned path is not re-validated. Do not treat it as isolation for untrusted input that is opened much later.
 
-Continue with [[05-integration|Integration and Error Handling]].
+Continue with [[integration|Integration and Error Handling]].

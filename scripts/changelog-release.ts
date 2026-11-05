@@ -18,6 +18,16 @@ content = content.replace(
   `## [Unreleased]\n\n---\n\n## [${version}] - ${date}`
 );
 
+const unreleasedLink = /^\[Unreleased\]: (.+)\/compare\/(v[^.\s]+\.[^.\s]+\.[^.\s]+)\.\.\.HEAD$/m;
+const link = unreleasedLink.exec(content);
+if (link) {
+  const [line, repoUrl, previous] = link;
+  content = content.replace(
+    line,
+    `[Unreleased]: ${repoUrl}/compare/v${version}...HEAD\n[${version}]: ${repoUrl}/compare/${previous}...v${version}`
+  );
+}
+
 writeFileSync(changelogPath, content);
 console.log(`✅ CHANGELOG.md updated: [Unreleased] → [${version}] - ${date}`);
 
