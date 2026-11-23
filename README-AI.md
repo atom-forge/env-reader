@@ -57,4 +57,4 @@ const cache = env.dir("CACHE_DIR", "var/cache", dir => fs.mkdirSync(dir, { recur
 - [CHANGELOG.md](./CHANGELOG.md): every change by version.
 - [README.md](./README.md): short introduction for human readers.
 
-The guide is derived from the [Env Reader book](https://books.atom-forge.eu). For behavior the guide does not cover, inspect the compiled implementation in `dist/`, or the TypeScript source and the tests in `test/` of the [source repository](https://github.com/atom-forge/env-reader); do not assume undocumented behavior.
+The guide is derived from the [Env Reader book](https://books.atomforge.eu). For behavior the guide does not cover, inspect the compiled implementation in `dist/`, or the TypeScript source and the tests in `test/` of the [source repository](https://github.com/atom-forge/env-reader); do not assume undocumented behavior.

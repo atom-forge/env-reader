@@ -1,6 +1,6 @@
 # @atom-forge/env-reader
 
-> Ez az oldal a [docs/en/index.md](../en/index.md) magyar fordítása, amely az [Env Reader könyv](https://books.atom-forge.eu) egyoldalas változata.
+> Ez az oldal a [docs/en/index.md](../en/index.md) magyar fordítása, amely az [Env Reader könyv](https://books.atomforge.eu) egyoldalas változata.
 
 Ez az útmutató bemutatja, hogyan olvasd be a környezeti konfigurációt TypeScript-alkalmazásokban: a telepítéstől a típusos konfigurációs objektumig, az URL-leképezéstől a fájlrendszerbeli útvonalakig.
 

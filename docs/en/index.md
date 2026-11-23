@@ -1,6 +1,6 @@
 # @atom-forge/env-reader
 
-> This page is the single-page version of the [Env Reader book](https://books.atom-forge.eu). Magyar változat: [docs/hu/index.md](../hu/index.md).
+> This page is the single-page version of the [Env Reader book](https://books.atomforge.eu). Magyar változat: [docs/hu/index.md](../hu/index.md).
 
 This guide shows how to read environment configuration in TypeScript applications: from installation to a typed configuration object, from URL mapping to filesystem paths.
 
